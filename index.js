@@ -1,43 +1,36 @@
-const stripe = require('stripe')('sk_test_51OtaX0JA4oGedNG8rAzctAxCGtoZMKsCjmkTTYTZ3QG4nzZEpYL4029oQ4oHxTfQTzeRtZfUVgzGTW5CZv3uWqZh00NfpQg12i');
+import express from "express"
+const app = express()
+const stripe = require("stripe")('sk_test_51OtaX0JA4oGedNG8rAzctAxCGtoZMKsCjmkTTYTZ3QG4nzZEpYL4029oQ4oHxTfQTzeRtZfUVgzGTW5CZv3uWqZh00NfpQg12i')
+import { urlencoded, json } from "body-parser"
+import cors from "cors"
 
-const express = require('express');
-const bodyParser = require('body-parser');
-const app = express();
+app.use(urlencoded({ extended: true }))
+app.use(json())
 
-app.use(bodyParser.json())
+app.use(cors())
 
-
-process.on('uncaughtException', function (err) {
-  console.log(err);
-});
-
-app.get('/',(req, res)=>{
-    res.send("Hello Folks..!!! Please subscribe my channel")
+app.post("/payment-sheet", cors(), async (req, res) => {
+	let { amount, id } = req.body
+	try {
+		const payment = await stripe.paymentIntents.create({
+			amount,
+			currency: "USD",
+			description: "Spatula company",
+			payment_method: id,
+			confirm: true
+		})
+		console.log("Payment", payment)
+		res.json({
+			message: "Payment successful",
+			success: true
+		})
+	} catch (error) {
+		console.log("Error", error)
+		res.json({
+			message: "Payment failed",
+			success: false
+		})
+	}
 })
-
-
-app.post('/payment-sheet', async (req, res) => {
-    // Use an existing Customer ID if this is a returning customer.
-
-    const {amount, currency} = req.body
-
-    const customer = await stripe.customers.create();
-    const ephemeralKey = await stripe.ephemeralKeys.create(
-      {customer: customer.id},
-      {apiVersion: '2022-08-01'}
-    );
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: amount,
-      currency: currency,
-      customer: customer.id,
-      payment_method_types: [ 'card'],
-    });
-  
-    res.json({
-      paymentIntent: paymentIntent.client_secret,
-      ephemeralKey: ephemeralKey.secret,
-      customer: customer.id,
-    });
-  });
 
 app.listen(4002, ()=> console.log("Running on http://localhost:4002"))
